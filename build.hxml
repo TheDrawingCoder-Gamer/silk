@@ -2,9 +2,9 @@
 
 --each
 --main Silk
---cpp bin/silk
+--cpp export/silk
 
 
 --next
 --main Spx
---cpp bin/spx
+--cpp export/spx
