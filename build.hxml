@@ -1,10 +1,11 @@
 --class-path src
-
+--library tink_cli
 --each
 --main Silk
---cpp export/silk
-
+--neko export/silk.n
+--cmd "nekotools boot export/silk.n"
 
 --next
 --main Spx
---cpp export/spx
+--neko export/spx.n
+--cmd "nekotools boot export/spx.n"
