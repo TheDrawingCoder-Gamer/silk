@@ -3,6 +3,6 @@
 
 class Spx {
     public static function main() {
-        Sys.exit(Sys.command('haxelib', ["run"].concat(Sys.args())));
+        Sys.exit(Sys.command('silk', ["run"].concat(Sys.args())));
     }
 }

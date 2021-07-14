@@ -1,0 +1,5 @@
+This is a wrapper around haxelib. 
+
+Right now there are no prebuilt builds but you can create it easily (if you can build cpp haxe)
+
+Just run `haxe build.hxml` and you'll get the exes for each one (silk, the wrapper while spx is a shortcut for silk run)
