@@ -1,0 +1,10 @@
+--class-path src
+
+--each
+--main Silk
+--cpp bin/silk
+
+
+--next
+--main Spx
+--cpp bin/spx
