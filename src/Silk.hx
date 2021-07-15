@@ -8,7 +8,7 @@ import haxelib.client.Main as HaxelibMain;
 import haxe.remoting.Proxy;
 import tink.Cli;
 import tink.cli.Rest;
-
+using StringTools;
 class Silk {
     public static function main() {
       /*
@@ -263,28 +263,31 @@ class SilkCli {
 		var goodArgs:Array<String> = cast (rest : Array<String>);
 		if (goodArgs[0] == null) 
 			throw 'Library must be specified';
-		if (goodArgs[1] == null)
-			throw 'Hxml file must be specified.';
-		var myHaxelib = File.getContent(goodArgs[1]);
+		var pathThing:Array<String>;
+		if (goodArgs[1] != null) {
+			var myHaxelib = File.getContent(goodArgs[1]);
 
-		var pathThing = scanForDep(myHaxelib, goodArgs[0]);
-		
-		
+			pathThing = scanForDep(myHaxelib, goodArgs[0]);
+
+			
+		} else {
+			// try to find the file
+			if (!FileSystem.exists('haxelib.json'))
+				throw 'If there is no haxelib.json you must specify a hxml file.';
+			Sys.println('Using haxelib.json... Haxelib.json support is unstable and breaks easily.');
+			var myJson = File.getContent('haxelib.json');
+			pathThing = scanForDepFromLib(Data.readData(myJson, CheckData), goodArgs[0], [], true);
+		}
 		if (pathThing[0] == '~this') {
 			Sys.println('This is directly required by your project.');
-		} else if (pathThing.length == 0){
-			Sys.println("Couldn't find a reason (either silk couldn't find a reason or the project doesn't use "+ goodArgs[0] + " as a dependency.)");
+		} else if (pathThing.length == 0) {
+			Sys.println("Couldn't find a reason (either silk couldn't find a reason or the project doesn't use " + goodArgs[0] + " as a dependency.)");
 		} else {
-			var smellyName:String = 'Dependency structure:';
-			for (i in 0...pathThing.length) {
-				var thing = pathThing[i];
-				if (i != 0) {
-					smellyName += ',';
-				}
-				smellyName += ' ${thing}';
-			}
+			var smellyName:String = 'Dependency structure: ' + pathThing.join(', ');
 			Sys.println(smellyName);
 		}
+			
+		
 
 	}
 	function scanForDep(hxml:String, lib:String) {
@@ -309,17 +312,23 @@ class SilkCli {
 				// note to self [] != [] because objects
 				if (coolThingies.length != 0)
 					return coolThingies;
+			} else if (l.endsWith('.hxml')) {
+				var output = scanForDep(File.getContent(l.trim()), lib);
+				if (output.length != 0) {
+					return output;
+				}
 			}
 		}
 		return [];
 	}
-	function scanForDepFromLib(libData:Infos, scanFor:String, path:Array<String>):Array<String> {
+	function scanForDepFromLib(libData:Infos, scanFor:String, path:Array<String>, ?direct:Bool = false):Array<String> {
 		var rep = hecks.getRepository();
 		for (dep in libData.dependencies) {
 			var nuPath = path.copy();
 			nuPath.push(dep.name);
 			if (dep.name == scanFor) {
-				return nuPath;
+
+				return direct ? ['~this'] : nuPath;
 			}
 			var results = new List();
 			hecks.checkRec(rep, dep.name, null, results, false);

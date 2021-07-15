@@ -12,5 +12,10 @@
     "releasenote": "initial release",
     "contributors": [
         "BulbyVR"
-    ]
+    ],
+    "dependencies": {
+        "haxelib": "",
+        "hx3compat": "1.0.3",
+        "tink_cli": "0.5.1"
+    }
 }
