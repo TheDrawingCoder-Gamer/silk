@@ -33,6 +33,8 @@ jobs:
         run: |
           haxelib setup ~/haxelib
           haxelib install hxcpp > /dev/null
+          haxelib install tink_cli
+          haxelib git haxelib https://github.com/HaxeFoundation/haxelib
           haxelib list
       - name: Compile
         run: haxe build.hxml
@@ -56,6 +58,8 @@ jobs:
         run: |
           haxelib setup C:/haxelib
           haxelib install hxcpp > nul
+          haxelib install tink_cli
+          haxelib git haxelib https://github.com/HaxeFoundation/haxelib
           haxelib list
         shell: cmd
       - name: Compile
@@ -80,6 +84,8 @@ jobs:
         run: |
           haxelib setup ~/haxelib
           haxelib install hxcpp > /dev/null
+          haxelib install tink_cli
+          haxelib git haxelib https://github.com/HaxeFoundation/haxelib
           haxelib list
       - name: Compile
         run: haxe build.hxml
