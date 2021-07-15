@@ -324,6 +324,7 @@ class SilkCli {
 	function scanForDepFromLib(libData:Infos, scanFor:String, path:Array<String>, ?direct:Bool = false):Array<String> {
 		var rep = hecks.getRepository();
 		for (dep in libData.dependencies) {
+			// trace(dep);
 			var nuPath = path.copy();
 			nuPath.push(dep.name);
 			if (dep.name == scanFor) {
@@ -339,7 +340,7 @@ class SilkCli {
 				continue;
 			var haxelibData = Data.readData(File.getContent(pathe + '/haxelib.json'), CheckData);
 			var scanResult = scanForDepFromLib(haxelibData, scanFor, nuPath);
-			if (scanResult != [])
+			if (scanResult.length != 0)
 				return scanResult;
 		}
 		return [];
