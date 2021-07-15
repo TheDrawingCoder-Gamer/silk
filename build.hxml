@@ -1,5 +1,7 @@
 --class-path src
 --library tink_cli
+--library haxelib
+--library hx3compat
 --each
 --main Silk
 --neko export/silk.n
