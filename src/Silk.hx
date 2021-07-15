@@ -274,7 +274,7 @@ class SilkCli {
 			// try to find the file
 			if (!FileSystem.exists('haxelib.json'))
 				throw 'If there is no haxelib.json you must specify a hxml file.';
-			Sys.println('Using haxelib.json... Haxelib.json support is unstable and breaks easily.');
+			// Sys.println('Using haxelib.json... Haxelib.json support is unstable and breaks easily.');
 			var myJson = File.getContent('haxelib.json');
 			pathThing = scanForDepFromLib(Data.readData(myJson, CheckData), goodArgs[0], [], true);
 		}
