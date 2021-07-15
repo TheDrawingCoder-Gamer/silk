@@ -34,6 +34,7 @@ jobs:
           haxelib setup ~/haxelib
           haxelib install hxcpp > /dev/null
           haxelib install tink_cli
+          haxelib install hx3compat
           haxelib git haxelib https://github.com/HaxeFoundation/haxelib
           haxelib list
       - name: Compile
@@ -59,6 +60,7 @@ jobs:
           haxelib setup C:/haxelib
           haxelib install hxcpp > nul
           haxelib install tink_cli
+          haxelib install hx3compat
           haxelib git haxelib https://github.com/HaxeFoundation/haxelib
           haxelib list
         shell: cmd
@@ -85,6 +87,7 @@ jobs:
           haxelib setup ~/haxelib
           haxelib install hxcpp > /dev/null
           haxelib install tink_cli
+          haxelib install hx3compat
           haxelib git haxelib https://github.com/HaxeFoundation/haxelib
           haxelib list
       - name: Compile
