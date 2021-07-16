@@ -1,7 +1,7 @@
 package;
 
 import haxe.Json;
-import tink.cli.Prompt;
+
 import haxelib.client.Vcs.VcsID;
 import haxe.Exception;
 import sys.FileSystem;
@@ -17,7 +17,7 @@ using ArrayTools;
 class Silk {
     public static function main() {
 
-      Cli.process(Sys.args(), new SilkCli(), cast Simple).handle(Cli.exit);
+      Cli.process(Sys.args(), new SilkCli()).handle(Cli.exit);
     }
         
 }
@@ -35,6 +35,7 @@ class SiteProxy extends Proxy<haxelib.SiteApi> {}
 @:access(haxelib.client.Main)
 // Technically you don't have to have haxelib installed but like
 // if you are using haxe it basically _needs_ to be installed
+// I'm all for tink but i hate that i have to put optional on all of these goddamn switches
 class SilkCli {
 	var hecks:HaxelibMain;
 	@:optional
@@ -62,8 +63,8 @@ class SilkCli {
 	@:optional
 	@:alias('g')
 	public var global:Bool;
+	@:optional
 	public var silky:Bool;
-	var prompt:Prompt;
 	@:defaultCommand
 	public function help(rest:Rest<String>) {
 		hecks.usage();
@@ -195,8 +196,7 @@ class SilkCli {
 		hecks.proxy();
 	}
 	@:command('why')
-	public function why(rest:Rest<String>, pr:Prompt) {
-		this.prompt = pr;
+	public function why(rest:Rest<String>) {
 		// idk why i need to declare type here... isn't that what the cast is supposed to do? 
 		var goodArgs:Array<String> = cast (rest : Array<String>);
 		if (goodArgs[0] == null) 
@@ -346,6 +346,7 @@ class SilkCli {
 			return '';
 
 		} else if (gitRegex.match(version)) {
+			/*
 			var gitUrl = gitRegex.matched(1);
 			var pdir = rep + '/' + Data.safe(lib) + '/' + Data.safe(projectName());
 			if (FileSystem.exists(pdir))
@@ -358,6 +359,8 @@ class SilkCli {
 				return projectName();
 			}
 			throw new Exception("Wasn't allowed to download version and it didn't exist.");
+			*/
+			return 'git';
 			
 		} else {
 			switch (version) {
