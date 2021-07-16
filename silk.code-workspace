@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "..\\..\\..\\..\\..\\HaxeToolkit\\haxe\\lib\\haxelib\\git"
 		}
 	],
 	"settings": {}

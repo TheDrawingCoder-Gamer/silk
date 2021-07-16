@@ -1,5 +1,9 @@
 package;
 
+import haxe.Json;
+import tink.cli.Prompt;
+import haxelib.client.Vcs.VcsID;
+import haxe.Exception;
 import sys.FileSystem;
 import haxe.io.Path;
 import sys.io.File;
@@ -9,106 +13,28 @@ import haxe.remoting.Proxy;
 import tink.Cli;
 import tink.cli.Rest;
 using StringTools;
+using ArrayTools;
 class Silk {
     public static function main() {
-      /*
-        var arguments = Sys.args();
-        if (arguments.length == 0 || arguments[0] == 'help') {
-            Sys.println('Welcome to silk, a thin little wrapper around haxelib that gives some convienence with alternate names. 
-Usage: silk [command] [options]
-  Basic
-    install or i                   : install a given library, or all libraries from a hxml file
-    update                         : update a single library (if given) or all installed libraries
-    remove                         : remove a given library/version
-    list                           : list all installed libraries
-    set                            : set the current version for a library
-  Information
-    search                         : list libraries matching a word
-    info or about                  : list information on a given library
-    user                           : list information on a given user
-    config                         : print the repository path
-    path                           : give paths to libraries\' sources and necessary build definitions
-    libpath                        : returns the root path of a library
-    version                        : print the currently used haxelib version
-    help                           : display this list of options
-  Development
-    submit                         : submit or update a library package
-    register                       : register a new user
-    dev                            : set the development directory for a given library
-    git                            : use Git repository as library
-    hg                             : use Mercurial (hg) repository as library
-  Miscellaneous
-    setup                          : set the haxelib repository path
-    newrepo                        : create a new local repository
-    deleterepo                     : delete the local repository
-    convertxml                     : convert haxelib.xml file to haxelib.json
-    run                            : run the specified library with parameters
-    proxy                          : setup the Http proxy
-  Available switches
-    --flat                         : do not use --recursive cloning for git
-    --always or -y                 : answer all questions with yes
-    --debug                        : run in debug mode, imply not --quiet
-    --quiet                        : print less messages, imply not --debug
-    --system                       : run bundled haxelib version instead of latest update
-    --skip-dependencies or --no-dep: do not install dependencies
-    --never or -n                  : answer all questions with no
-    --global or -g                 : force global repo if a local one exists');
-        } else {
-			for (i in 0...arguments.length) {
-        // all valid characters in a url :sparkles:
-				var gitRegex = ~/([A-Za-z0-9_\-.]+)@([a-zA-Z0-9-._~:\/?#\[\]@!$&'\(\)*+,;%=]+)/;
-				var versionRegex = ~/([A-Za-z0-9_\-.]+)@((?:[0-9]+)\.(?:[0-9]+)\.(?:[0-9]+)(?:-(?:[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?)/;
-				var githubRegex = ~/([A-Za-z0-9_\-.]+)@(?:github:)?([a-z0-9\-]+\/[a-z0-9\-]+)(?:#([a-z0-9]+))?/;
-				switch (arguments[i]) {
-					case '-y':
-						arguments[i] = '--always';
-					case '-n':
-						arguments[i] = '--never';
-					case '--no-dep':
-						arguments[i] = '--skip-dependencies';
-					case 'i' | 'add':
-						arguments[i] = 'install';
-					case 'about':
-						arguments[i] = 'info';
-					case '-g':
-						arguments[i] = '--global';
-          case 'up':
-            arguments[i] = 'upgrade';
-          
-          case _ if (versionRegex.match(arguments[i])):
-            arguments[0] = 'install';
-            arguments[i] = versionRegex.matched(2);
-            arguments.insert(i, versionRegex.matched(1));
-          case _ if (githubRegex.match(arguments[i])):
-            arguments[0] = 'git';
-						var aUrl = 'https://github.com/';
-            aUrl = aUrl + githubRegex.matched(2);
-            if (githubRegex.matched(3) != null) {
-              aUrl += '/tree/' + githubRegex.matched(3);
-            }
-            arguments[i] = aUrl;
-            arguments.insert(i, githubRegex.matched(1));
-          case _ if (gitRegex.match(arguments[i]) && arguments[0] == 'install'):
-            // we have to reconfigure :sparkles: the whole thing :sparkles:
-            arguments[0] = 'git';
-            arguments[i] = gitRegex.matched(2);
-            arguments.insert(i, gitRegex.matched(1));
-				}
-			}
-			Sys.exit(Sys.command('haxelib', arguments));
-      */
-      Cli.process(Sys.args(), new SilkCli()).handle(Cli.exit);
-        }
+
+      Cli.process(Sys.args(), new SilkCli(), cast Simple).handle(Cli.exit);
+    }
         
 }
+
 enum Categories {
   Basic;
   Information;
   Development;
   Misc;
 }
+typedef SilkYML = {
+	var dependencies:Map<String, String>;
+}
 class SiteProxy extends Proxy<haxelib.SiteApi> {}
 @:access(haxelib.client.Main)
+// Technically you don't have to have haxelib installed but like
+// if you are using haxe it basically _needs_ to be installed
 class SilkCli {
 	var hecks:HaxelibMain;
 	@:optional
@@ -136,134 +62,146 @@ class SilkCli {
 	@:optional
 	@:alias('g')
 	public var global:Bool;
+	public var silky:Bool;
+	var prompt:Prompt;
 	@:defaultCommand
 	public function help(rest:Rest<String>) {
-			Sys.command('haxelib', ['help']);
+		hecks.usage();
 	}
 	@:command('install', 'i', 'add')
 	public function install(rest:Rest<String>) {
 		var args = cast (rest : Array<String>);
-			var gitRegex = ~/([A-Za-z0-9_\-.]+)@([a-zA-Z0-9-._~:\/?#\[\]@!$&'\(\)*+,;%=]+)/;
-			var versionRegex = ~/([A-Za-z0-9_\-.]+)@((?:[0-9]+)\.(?:[0-9]+)\.(?:[0-9]+)(?:-(?:[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?)/;
-			var githubRegex = ~/([A-Za-z0-9_\-.]+)@(?:github:)?([a-z0-9\-]+\/[a-z0-9\-]+)(?:#([a-z0-9]+))?/;
-			var mercuryRegex = ~/([A-Za-z0-9_\-.]+)@(?:mercury|hg):([a-zA-Z0-9-._~:\/?#\[\]@!$&'\(\)*+,;%=]+)/;
+		var gitRegex = ~/([A-Za-z0-9_\-.]+)@([a-zA-Z0-9-._~:\/?#\[\]@!$&'\(\)*+,;%=]+)/;
+		var versionRegex = ~/([A-Za-z0-9_\-.]+)@((?:[0-9]+)\.(?:[0-9]+)\.(?:[0-9]+)(?:-(?:[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?)/;
+		var githubRegex = ~/([A-Za-z0-9_\-.]+)@(?:github:)?([a-z0-9\-]+\/[a-z0-9\-]+)(?:#([a-z0-9]+))?/;
+		var mercuryRegex = ~/([A-Za-z0-9_\-.]+)@(?:mercury|hg):([a-zA-Z0-9-._~:\/?#\[\]@!$&'\(\)*+,;%=]+)/;
 		var argFlags = getArgsForhaxe();
 		var argumentsToPass = ['install'];
+		trace(args);
+		var doing = 'install';
 		if (args[0] != null) {
-		if (versionRegex.match(args[0])) {
-					argumentsToPass.push(versionRegex.matched(1));
-					argumentsToPass.push(versionRegex.matched(2));
-		} else if (mercuryRegex.match(args[0])) {
-			argumentsToPass[0] = 'hg';
-			argumentsToPass.push(mercuryRegex.matched(1));
-			argumentsToPass.push(mercuryRegex.matched(2));
-		} else if (githubRegex.match(args[0])) {
-			argumentsToPass[0] = 'git';
-					var aUrl = 'https://github.com/';
-					aUrl = aUrl + githubRegex.matched(2);
-					if (githubRegex.matched(3) != null) {
-						aUrl += '/tree/' + githubRegex.matched(3);
-					}
-			argumentsToPass.push(githubRegex.matched(1));
-			argumentsToPass.push(aUrl);
-		} else if (gitRegex.match(args[0])) {
-			argumentsToPass[0] = 'git';
-			argumentsToPass.push(gitRegex.matched(1));
-			argumentsToPass.push(gitRegex.matched(2));
-		} else {
-			argumentsToPass.concat(args);
-		}
+			var nameThing = args.shift();
+			if (versionRegex.match(nameThing)) {
+				argumentsToPass.push(versionRegex.matched(1));
+				argumentsToPass.push(versionRegex.matched(2));
+			} else if (mercuryRegex.match(nameThing)) {
+				doing = 'hg';
+				argumentsToPass.push(mercuryRegex.matched(1));
+				argumentsToPass.push(mercuryRegex.matched(2));
+			} else if (githubRegex.match(nameThing)) {
+				doing = 'git';
+				var aUrl = 'https://github.com/';
+				aUrl = aUrl + githubRegex.matched(2);
+				if (githubRegex.matched(3) != null) {
+					aUrl += '/tree/' + githubRegex.matched(3);
+				}
+				argumentsToPass.push(githubRegex.matched(1));
+				argumentsToPass.push(aUrl);
+			} else if (gitRegex.match(nameThing)) {
+				doing = 'git';
+				argumentsToPass.push(gitRegex.matched(1));
+				argumentsToPass.push(gitRegex.matched(2));
+			} else {
+				// concat destructive
+				argumentsToPass.push(nameThing);
+				argumentsToPass = argumentsToPass.concat(args);
+			}
 
 		}
-		argumentsToPass.concat(argFlags);
+		argumentsToPass[0] = doing;
+		argumentsToPass = argumentsToPass.concat(argFlags);
 		trace(argumentsToPass);
-		Sys.command('haxelib', argumentsToPass);
+		hecks.args = argumentsToPass;
+		// fuck it, haxelib take the wheel
+		hecks.process();
+		
 	}
 	@:command('update')
 	public function update(rest:Rest<String>) {
-			Sys.command('haxelib', ['update'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.update();
 	}
 	@:command('remove', 'rm', 'uninstall')
 	public function remove(rest:Rest<String>) {
-			Sys.command('haxelib', ['remove'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.remove();
 	}
 	@:command('list', 'ls')
 	public function list(rest:Rest<String>) {
-			Sys.command('haxelib', ['list'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.list();
 	}
 	@:command('set')
 	public function set(rest:Rest<String>) {
-		Sys.command('haxelib', ['set'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.set();
 	}
 	@:command('search', 'find')
 	public function search(rest:Rest<String>) {
-		Sys.command('haxelib', ['search'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.search();
 	}
 	@:command('info', 'about')
 	public function info(rest:Rest<String>) {
-		Sys.command('haxelib', ['info'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.info();
 	}
 	@:command('config')
 	public function config(rest:Rest<String>) {
-		Sys.command('haxelib', ['config'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.config();
 	}
 	@:command('path')
 	public function path(rest:Rest<String>) {
-		Sys.command('haxelib', ['path'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.path();
 	}
 	@:command('libpath')
 	public function libpath(rest:Rest<String>) {
-		Sys.command('haxelib', ['libpath'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.libpath();
 	}
 	@:command('version')
 	public function version(rest:Rest<String>) {
-		Sys.command('haxelib', ['version'].concat(cast rest).concat(getArgsForhaxe()));
-	Sys.println('Silk Version: 0.0.1');
+		hecks.version();
+		Sys.println('Silk Version: 0.0.1');
 	}
 	@:command('submit')
 	public function submit(rest:Rest<String>) {
-		Sys.command('haxelib', ['submit'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.submit();
 	}
 	@:command('register')
 	public function register(rest:Rest<String>) {
-		Sys.command('haxelib', ['register'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.register();
 	}
 	@:command('dev')
 	public function dev(rest:Rest<String>) {
-		Sys.command('haxelib', ['dev'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.dev();
 	}
 	@:command('setup')
 	public function setup(rest:Rest<String>) {
-		Sys.command('haxelib', ['setup'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.setup();
 	}
 	@:command('newrepo')
 	public function newrepo(rest:Rest<String>) {
-		Sys.command('haxelib', ['newrepo'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.newRepo();
 	}
 	@:command('deleterepo')
 	public function delrepo(rest:Rest<String>) {
-		Sys.command('haxelib', ['deleterepo'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.deleteRepo();
 	}
 	@:command('convertxml')
 	public function convertxml(rest:Rest<String>) {
-		Sys.command('haxelib', ['convertxml'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.convertXml();
 	}
+	// Passing straight to haxelib makes things easier as it already reads intrustions itself.
 	@:command('run')
 	public function run(rest:Rest<String>) {
-		Sys.command('haxelib', ['run'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.run();
 	}
 	@:command('proxy')
 	public function proxy(rest:Rest<String>) {
-		Sys.command('haxelib', ['proxy'].concat(cast rest).concat(getArgsForhaxe()));
+		hecks.proxy();
 	}
 	@:command('why')
-	public function why(rest:Rest<String>) {
-		
+	public function why(rest:Rest<String>, pr:Prompt) {
+		this.prompt = pr;
 		// idk why i need to declare type here... isn't that what the cast is supposed to do? 
 		var goodArgs:Array<String> = cast (rest : Array<String>);
 		if (goodArgs[0] == null) 
-			throw 'Library must be specified';
-		var pathThing:Array<String>;
+			throw new Exception('Library must be specified');
+		var pathThing:Array<String> = [];
 		if (goodArgs[1] != null) {
 			var myHaxelib = File.getContent(goodArgs[1]);
 
@@ -272,11 +210,19 @@ class SilkCli {
 			
 		} else {
 			// try to find the file
-			if (!FileSystem.exists('haxelib.json'))
-				throw 'If there is no haxelib.json you must specify a hxml file.';
-			// Sys.println('Using haxelib.json... Haxelib.json support is unstable and breaks easily.');
-			var myJson = File.getContent('haxelib.json');
-			pathThing = scanForDepFromLib(Data.readData(myJson, CheckData), goodArgs[0], [], true);
+			if (FileSystem.exists('haxelib.json') && (!silky || !FileSystem.exists('.silk.json'))) {
+				var myJson = File.getContent('haxelib.json');
+				pathThing = scanForDepFromLib(Data.readData(myJson, CheckData), goodArgs[0], [], true);
+				
+			}
+			else if (FileSystem.exists('.silk.json')) {
+				var myYml = File.getContent('.silk.json');
+				pathThing = scanForDepFromYml(parseSilkyJson(myYml), goodArgs[0], []);
+			} else {
+				throw new Exception("If no hxml is specified there must be a .silk.yml or a haxelib.json.");
+			}
+			
+			
 		}
 		if (pathThing[0] == '~this') {
 			Sys.println('This is directly required by your project.');
@@ -345,6 +291,94 @@ class SilkCli {
 		}
 		return [];
 	}
+	function scanForDepFromYml(ymlData:SilkYML, scanFor:String, path:Array<String>):Array<String> {
+		var rep = hecks.getRepository();
+		trace(ymlData.dependencies);
+		for (dep => version in ymlData.dependencies) {
+			version = parseVersion(version, dep);
+			trace(version);
+			trace(dep);
+			// trace(dep);
+			var nuPath = path.copy();
+			nuPath.push(dep);
+			if (dep == scanFor) {
+				return ['~this'];
+			}
+			var results = new List();
+			hecks.checkRec(rep, dep, version, results, false);
+			var pathe = '';
+			if (!results.isEmpty())
+				pathe = results.first().dir;
+			if (pathe == '')
+				continue;
+			var haxelibData = Data.readData(File.getContent(pathe + '/haxelib.json'), CheckData);
+			var scanResult = scanForDepFromLib(haxelibData, scanFor, nuPath);
+			if (scanResult.length != 0)
+				return scanResult;
+		}
+		return [];
+	}
+	function parseVersion(version:String, lib:String):String {
+		var versionRegex = ~/((?:[0-9]+)\.(?:[0-9]+)\.(?:[0-9]+)(?:-(?:[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?)/;
+		var gitRegex = ~/((?:git:)[a-zA-Z0-9-._~:\/?#\[\]@!$&'\(\)*+,;%=]+)/;
+		var githubRegex = ~/(?:github:)([a-z0-9\-]+\/[a-z0-9\-]+)(?:#([a-z0-9]+))?/;
+		var mercuryRegex = ~/(?:mercury|hg):([a-zA-Z0-9-._~:\/?#\[\]@!$&'\(\)*+,;%=]+)/;
+		var rep = hecks.getRepository();
+		try {
+			var pdir = rep + '/' + Data.safe(lib) + '/' + Data.safe(version);
+			// we don't need to check for dev as explicit version should always exist
+			if (FileSystem.exists(pdir) || version == "dev") {
+				return version;
+			}
+		} catch (e:Any) {}
+		
+		if (versionRegex.match(version)) {
+			return version;
+		} else if (mercuryRegex.match(version)) {
+			// TODO, find out how it works
+			Sys.println('Currently, silk doesn\'t know how to get versions of mercuriral projects.');
+			Sys.exit(-1);
+			return '';
+		} else if (githubRegex.match(version)) {
+			// i don't know how to use vcs. 
+			Sys.println('Currently, silk doesn\'t know how to get versions of git projects.');
+			Sys.exit(-1);
+			return '';
+
+		} else if (gitRegex.match(version)) {
+			var gitUrl = gitRegex.matched(1);
+			var pdir = rep + '/' + Data.safe(lib) + '/' + Data.safe(projectName());
+			if (FileSystem.exists(pdir))
+				return projectName();
+			// tink has an api for this but i'm not in the mood to deal with async
+			if (!never && !always)
+				Sys.println('Install git of $lib for this project? [y/n]');
+			if (!never && (always || Sys.stdin().readLine().trim() == 'y')) {
+				hecks.doVcsInstall(rep, new CustomGitVcs(projectName(), hecks.settings), lib, gitUrl, null, null, null);
+				return projectName();
+			}
+			throw new Exception("Wasn't allowed to download version and it didn't exist.");
+			
+		} else {
+			switch (version) {
+				case 'git' | 'hg': 
+					// non specific i'm sure it's fine
+					return version;
+			}
+		}
+		throw new Exception("Version doesn't exist");
+		return '';
+	}
+	function projectName() {
+		if (FileSystem.exists('haxelib.json')) {
+			var info = Data.readData(File.getContent('haxelib.json'), CheckData);
+			return cast (info.name: String);
+		} else {
+			var cwdArray = Sys.getCwd().split('/');
+
+			return cwdArray[cwdArray.length - 1];
+		}
+	}
 	function getArgsForhaxe():Array<String> {
 			var flagsAsArgs = [];
 			if (always) {
@@ -370,6 +404,16 @@ class SilkCli {
 			if (global)
 				flagsAsArgs.push('--global');
 		return flagsAsArgs;
+	}
+	function parseSilkyJson(json:String):SilkYML {
+		trace(json);
+		var parsed:{dependencies:Dynamic} = Json.parse(json);
+		var map:Map<String, String> = [];
+		for (key in Reflect.fields(parsed.dependencies)) {
+			trace(" L )");
+			map.set(key, Reflect.field(parsed.dependencies, key));
+		}
+		return {dependencies: map};
 	}
 	public function new() {
 		hecks = new HaxelibMain();
