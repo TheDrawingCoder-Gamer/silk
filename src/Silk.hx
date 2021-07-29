@@ -14,10 +14,26 @@ import tink.Cli;
 import tink.cli.Rest;
 using StringTools;
 using ArrayTools;
+@:access(haxelib.client.Main)
 class Silk {
     public static function main() {
-
-      Cli.process(Sys.args(), new SilkCli()).handle(Cli.exit);
+		if (Sys.args()[0] == 'run') {
+			var hecks = new HaxelibMain();
+			hecks.args = Sys.args();
+			// haha. not cool > : (
+			hecks.settings = {
+				debug: false,
+				quiet: false,
+				always: false,
+				never: false,
+				flat: false,
+				global: false,
+				system: false,
+				skipDependencies: false,
+			};
+			hecks.process();
+		} else 
+    		Cli.process(Sys.args(), new SilkCli()).handle(Cli.exit);
     }
         
 }
@@ -119,81 +135,82 @@ class SilkCli {
 	}
 	@:command('update')
 	public function update(rest:Rest<String>) {
-		hecks.update();
+		process('update', cast rest);
 	}
 	@:command('remove', 'rm', 'uninstall')
 	public function remove(rest:Rest<String>) {
-		hecks.remove();
+		process('remove', cast rest);
 	}
 	@:command('list', 'ls')
 	public function list(rest:Rest<String>) {
-		hecks.list();
+		process('list', cast rest);
 	}
 	@:command('set')
 	public function set(rest:Rest<String>) {
-		hecks.set();
+		process('set', cast rest);
 	}
 	@:command('search', 'find')
 	public function search(rest:Rest<String>) {
-		hecks.search();
+		process('search', cast rest);
 	}
 	@:command('info', 'about')
 	public function info(rest:Rest<String>) {
-		hecks.info();
+		process('info', cast rest);
 	}
 	@:command('config')
 	public function config(rest:Rest<String>) {
-		hecks.config();
+		process('config', cast rest);
 	}
 	@:command('path')
 	public function path(rest:Rest<String>) {
-		hecks.path();
+		process('path', cast rest);
 	}
 	@:command('libpath')
 	public function libpath(rest:Rest<String>) {
-		hecks.libpath();
+		process('libpath', cast rest);
 	}
 	@:command('version')
 	public function version(rest:Rest<String>) {
-		hecks.version();
+		process('version', cast rest);
 		Sys.println('Silk Version: 0.0.1');
 	}
 	@:command('submit')
 	public function submit(rest:Rest<String>) {
-		hecks.submit();
+		process('submit', cast rest);
 	}
 	@:command('register')
 	public function register(rest:Rest<String>) {
-		hecks.register();
+		process('register', cast rest);
 	}
 	@:command('dev')
 	public function dev(rest:Rest<String>) {
-		hecks.dev();
+
+		process('dev', cast rest);
 	}
 	@:command('setup')
 	public function setup(rest:Rest<String>) {
-		hecks.setup();
+		process('setup', cast rest);
 	}
 	@:command('newrepo')
 	public function newrepo(rest:Rest<String>) {
-		hecks.newRepo();
+		process('newrepo', cast rest);
 	}
 	@:command('deleterepo')
 	public function delrepo(rest:Rest<String>) {
-		hecks.deleteRepo();
+		process('deleterepo', cast rest);
 	}
 	@:command('convertxml')
 	public function convertxml(rest:Rest<String>) {
-		hecks.convertXml();
+		process('convertxml', cast rest);
 	}
 	// Passing straight to haxelib makes things easier as it already reads intrustions itself.
 	@:command('run')
 	public function run(rest:Rest<String>) {
-		hecks.run();
+		process('run', cast rest);
 	}
 	@:command('proxy')
 	public function proxy(rest:Rest<String>) {
-		hecks.proxy();
+		process('proxy', cast rest);
 	}
 	@:command('why')
 	public function why(rest:Rest<String>) {
@@ -235,6 +252,16 @@ class SilkCli {
 			
 		
 
+	}
+	function process(cmd:String, rest:Array<String>) {
+		var stinkyArgs = [cmd];
+		if (cmd != 'run')
+			stinkyArgs = stinkyArgs.concat(rest).concat(getArgsForhaxe());
+		else 
+			stinkyArgs = Sys.args();
+		hecks.args = stinkyArgs;
+		trace(hecks.args);
+		hecks.process();
 	}
 	function scanForDep(hxml:String, lib:String) {
 		var rep = hecks.getRepository();
@@ -335,16 +362,21 @@ class SilkCli {
 		if (versionRegex.match(version)) {
 			return version;
 		} else if (mercuryRegex.match(version)) {
-			// TODO, find out how it works
+			// TODO find out how it works
+			/*
 			Sys.println('Currently, silk doesn\'t know how to get versions of mercuriral projects.');
 			Sys.exit(-1);
 			return '';
+			*/
+			return 'hg';
 		} else if (githubRegex.match(version)) {
 			// i don't know how to use vcs. 
+			/*
 			Sys.println('Currently, silk doesn\'t know how to get versions of git projects.');
 			Sys.exit(-1);
 			return '';
-
+			*/
+			return 'git';
 		} else if (gitRegex.match(version)) {
 			/*
 			var gitUrl = gitRegex.matched(1);
@@ -420,6 +452,7 @@ class SilkCli {
 	}
 	public function new() {
 		hecks = new HaxelibMain();
+		hecks.args = Sys.args();
 		hecks.settings = {
 			debug: debug,
 			quiet: quiet,
