@@ -2,12 +2,8 @@
 --library tink_cli
 --library haxelib
 --library hx3compat
+-L hxp
 --each
 --main Silk
---neko export/silk.n
---cmd "nekotools boot export/silk.n"
+--neko run.n
 
---next
---main Spx
---neko export/spx.n
---cmd "nekotools boot export/spx.n"

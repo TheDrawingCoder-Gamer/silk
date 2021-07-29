@@ -1,0 +1,30 @@
+dependencies: 
+  - tink_cli: "0.5.1"
+  - haxelib: git
+  - hx3compat: "1.0.3"
+# These aren't included with haxelib, but included in haxe/lime
+devDependecies: []
+haxelib: 
+  name: silk 
+  url: "https://lib.haxe.org/documentation/"
+  license: GPL
+  tags: 
+    - haxelib
+    - core
+  description: "A neat little wrapper around haxelib."
+  classPath: src
+  version: "0.0.1"
+  releasenote: initial release
+  contributors: 
+    - BulbyVR
+haxe: 
+  classPath: src
+  builds: 
+    - - main: Silk 
+      - neko: export/silk.n 
+      - cmd: "nekotools boot export/silk.n"
+    - - main: Spx
+      - neko: export/spx.n
+      - cmd: "nekotools boot export/spx.n"
+
+

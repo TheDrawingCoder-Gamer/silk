@@ -12,6 +12,7 @@ import haxelib.client.Main as HaxelibMain;
 import haxe.remoting.Proxy;
 import tink.Cli;
 import tink.cli.Rest;
+import hxp.*;
 using StringTools;
 using ArrayTools;
 @:access(haxelib.client.Main)
@@ -202,6 +203,70 @@ class SilkCli {
 	@:command('convertxml')
 	public function convertxml(rest:Rest<String>) {
 		process('convertxml', cast rest);
+	}
+	@:command('silksetup')
+	public function silksetup(rest:Rest<String>) {
+		var haxePath:Null<String> = Sys.getEnv('HAXEPATH');
+		// :neutral_face:
+		if (System.hostPlatform == WINDOWS) {
+			if (haxePath == null || haxePath == "") {
+				haxePath = "C:\\HaxeToolkit\\haxe\\";
+			}
+			try {
+				File.copy(hxp.Haxelib.getPath(new hxp.Haxelib("silk")) + "\\templates\\bin\\silk.bat", haxePath + "\\silk.bat");
+			} catch (e) {}
+			try {
+				File.copy(hxp.Haxelib.getPath(new hxp.Haxelib("silk")) + "\\templates\\bin\\silk.sh", haxePath + "\\silk.sh");
+			} catch (e) {}
+			try {
+				File.copy(hxp.Haxelib.getPath(new hxp.Haxelib("silk")) + "\\templates\\bin\\spx.bat", haxePath + "\\spx.bat");
+			} catch (e) {}
+			try {
+				File.copy(hxp.Haxelib.getPath(new hxp.Haxelib("silk")) + "\\templates\\bin\\spx.sh", haxePath + "\\spx.sh");
+			} catch (e) {}
+
+		} else {
+			if (haxePath == null || haxePath == "") {
+				haxePath = "/usr/lib/haxe";
+			}
+			var installed = false;
+
+			try {
+				System.runCommand("", "sudo", ["cp", "-f", hxp.Haxelib.getPath(new hxp.Haxelib("silk")) + '/templates/bin/silk.sh', "usr/local/bin/silk"], false);
+				System.runCommand("", "sudo", ["chmod", "755", "usr/local/bin/silk"], false);
+				System.runCommand("", "sudo", [
+					"cp",
+					"-f",
+					hxp.Haxelib.getPath(new hxp.Haxelib("silk")) + '/templates/bin/spx.sh',
+					"usr/local/bin/spx"
+				], false);
+				System.runCommand("", "sudo", ["chmod", "755", "usr/local/bin/spx"], false);
+				installed = true;
+			} catch (e) {}
+			if (!installed) {
+				try {
+					System.runCommand("", "sudo", [
+						"cp",
+						"-f",
+						hxp.Haxelib.getPath(new hxp.Haxelib("silk")) + '/templates/bin/silk.sh',
+						"usr/local/bin/silk"
+					], false);
+					System.runCommand("", "sudo", ["chmod", "755", "usr/local/bin/silk"], false);
+					System.runCommand("", "sudo", [
+						"cp",
+						"-f",
+						hxp.Haxelib.getPath(new hxp.Haxelib("silk")) + '/templates/bin/spx.sh',
+						"usr/local/bin/spx"
+					], false);
+					System.runCommand("", "sudo", ["chmod", "755", "usr/local/bin/spx"], false);
+					installed = true;
+				} catch (e) {}
+
+			}
+			if (!installed) {
+				Sys.println("Was unable to install alias. Try setting it up manually.");
+			}
+		}
 	}
 	// Passing straight to haxelib makes things easier as it already reads intrustions itself.
 	@:command('run')
