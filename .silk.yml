@@ -1,9 +1,11 @@
 dependencies: 
-  - tink_cli: "0.5.1"
-  - haxelib: git
-  - hx3compat: "1.0.3"
+  tink_cli: "0.5.1"
+  haxelib: ""
+  hx3compat: "1.0.3"
+  hxp: "1.2.1"
+  yaml: "2.0.1"
 # These aren't included with haxelib, but included in haxe/lime
-devDependecies: []
+devDependencies: {}
 haxelib: 
   name: silk 
   url: "https://lib.haxe.org/documentation/"
@@ -19,12 +21,11 @@ haxelib:
     - BulbyVR
 haxe: 
   classPath: src
-  builds: 
-    - - main: Silk 
-      - neko: export/silk.n 
-      - cmd: "nekotools boot export/silk.n"
-    - - main: Spx
-      - neko: export/spx.n
-      - cmd: "nekotools boot export/spx.n"
+  hxml: 
+    build: |
+      --main Silk
+      --neko run.n
+  
+
 
 

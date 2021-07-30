@@ -1,9 +1,8 @@
---class-path src
---library tink_cli
---library haxelib
---library hx3compat
+-cp src
+-L tink_cli
+-L yaml
 -L hxp
---each
+-L haxelib
+-L hx3compat
 --main Silk
 --neko run.n
-

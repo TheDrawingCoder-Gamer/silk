@@ -1,5 +1,8 @@
 package;
 
+import yaml.Parser.ParserOptions;
+import yaml.Yaml;
+import yaml.util.ObjectMap;
 import haxe.Json;
 
 import haxelib.client.Vcs.VcsID;
@@ -13,8 +16,33 @@ import haxe.remoting.Proxy;
 import tink.Cli;
 import tink.cli.Rest;
 import hxp.*;
+import haxe.DynamicAccess;
 using StringTools;
 using ArrayTools;
+
+typedef HaxelibSilky = {
+	var name:String;
+	var ?url:String;
+	var license:String;
+	var ?tags:Array<String>;
+	var ?description:String;
+	var ?classPath:String;
+	var version:String;
+	var releasenote:String;
+	var contributors:Array<String>;
+};
+
+typedef HaxeBuildSilky = {
+	var classPath:String; 
+	var hxml:Dynamic;
+};
+typedef SilkyYaml = {
+	var ?dependencies:Dynamic;
+	var ?devDependencies:Dynamic;
+	var ?haxelib:HaxelibSilky;
+	var ?haxe:HaxeBuildSilky;
+};
+
 @:access(haxelib.client.Main)
 class Silk {
     public static function main() {
@@ -45,15 +73,13 @@ enum Categories {
   Development;
   Misc;
 }
-typedef SilkYML = {
-	var dependencies:Map<String, String>;
-}
 class SiteProxy extends Proxy<haxelib.SiteApi> {}
 @:access(haxelib.client.Main)
 // Technically you don't have to have haxelib installed but like
 // if you are using haxe it basically _needs_ to be installed
 // I'm all for tink but i hate that i have to put optional on all of these goddamn switches
 class SilkCli {
+	static var parseOptions:ParserOptions = new ParserOptions().useObjects();
 	var hecks:HaxelibMain;
 	@:optional
   	@:alias('y')
@@ -177,6 +203,7 @@ class SilkCli {
 	}
 	@:command('submit')
 	public function submit(rest:Rest<String>) {
+		updateHaxelibJson();
 		process('submit', cast rest);
 	}
 	@:command('register')
@@ -185,7 +212,7 @@ class SilkCli {
 	}
 	@:command('dev')
 	public function dev(rest:Rest<String>) {
-
+		updateHaxelibJson();
 		process('dev', cast rest);
 	}
 	@:command('setup')
@@ -203,6 +230,11 @@ class SilkCli {
 	@:command('convertxml')
 	public function convertxml(rest:Rest<String>) {
 		process('convertxml', cast rest);
+	}
+	@:command('haxelib')
+	public function genHaxelib(rest:Rest<String>) {
+		updateHaxelibJson();
+		Sys.println('Updated haxelib.json.');
 	}
 	@:command('silksetup')
 	public function silksetup(rest:Rest<String>) {
@@ -268,14 +300,46 @@ class SilkCli {
 			}
 		}
 	}
-	// Passing straight to haxelib makes things easier as it already reads intrustions itself.
-	@:command('run')
-	public function run(rest:Rest<String>) {
-		process('run', cast rest);
-	}
 	@:command('proxy')
 	public function proxy(rest:Rest<String>) {
 		process('proxy', cast rest);
+	}
+	@:command('haxe')
+	public function haxecmd(rest:Rest<String>) {
+		var sleep:Array<String> = cast rest;
+		if (!FileSystem.exists('.silk.yml')) {
+			Sys.command('haxe', [sleep[0] + '.hxml']);
+			return;
+		}
+		var ymlData = parseSilkyJson(File.getContent('.silk.yml'));
+		var coolDep:DynamicAccess<String> = cast(merge(ymlData.dependencies, ymlData.devDependencies) : DynamicAccess<String>);
+		trace(ymlData);
+		var lines:Array<String> = [];
+		lines.push('-cp ' + ymlData.haxe.classPath);
+		for (key in coolDep.keys()) {
+			lines.push('-L ' + key);
+		}
+		var paragraph = lines.join("\n");
+		paragraph += '\n' + Reflect.field(ymlData.haxe.hxml, sleep[0]);
+		File.saveContent('${sleep[0]}.hxml', paragraph);
+		Sys.command('haxe', ['${sleep[0]}.hxml']);
+
+	}
+	@:command('makehxmls')
+	public function makehxmls(rest:Rest<String>) {
+		var ymlData = parseSilkyJson(File.getContent('.silk.yml'));
+		var coolDep:DynamicAccess<String> = cast(merge(ymlData.dependencies, ymlData.devDependencies) : DynamicAccess<String>);
+		var lines:Array<String> = [];
+		lines.push('-cp ' + ymlData.haxe.classPath);
+		for (key in coolDep.keys()) {
+			lines.push('-L ' + key);
+		}
+		var paragraph = lines.join("\n");
+		var hxml:DynamicAccess<String> = cast (ymlData.haxe.hxml : DynamicAccess<String>);
+		for (key => value in hxml.keyValueIterator()) {
+			var coool = paragraph + '\n' + value;
+			File.saveContent(key + '.hxml', coool);
+		}
 	}
 	@:command('why')
 	public function why(rest:Rest<String>) {
@@ -292,14 +356,14 @@ class SilkCli {
 			
 		} else {
 			// try to find the file
-			if (FileSystem.exists('haxelib.json') && (!silky || !FileSystem.exists('.silk.json'))) {
+			if (FileSystem.exists('.silk.yml')) {
+				
+				var myYml = File.getContent('.silk.yml');
+				pathThing = scanForDepFromYml(parseSilkyJson(myYml), goodArgs[0], []);
+			}
+			else if (FileSystem.exists('haxelib.json')) {
 				var myJson = File.getContent('haxelib.json');
 				pathThing = scanForDepFromLib(Data.readData(myJson, CheckData), goodArgs[0], [], true);
-				
-			}
-			else if (FileSystem.exists('.silk.json')) {
-				var myYml = File.getContent('.silk.json');
-				pathThing = scanForDepFromYml(parseSilkyJson(myYml), goodArgs[0], []);
 			} else {
 				throw new Exception("If no hxml is specified there must be a .silk.yml or a haxelib.json.");
 			}
@@ -317,6 +381,27 @@ class SilkCli {
 			
 		
 
+	}
+	function updateHaxelibJson() {
+		if (FileSystem.exists('.silk.yml')) {
+			var dataYml = parseSilkyJson(File.getContent('.silk.yml'));
+			if (dataYml.haxelib == null)
+				throw "Error, can't use as a haxelib project if there is no haxelib section of .silk.yml.";
+			var coolHaxelib = {
+				dependencies: dataYml.dependencies,
+				name: dataYml.haxelib.name,
+				url: dataYml.haxelib.url,
+				license: dataYml.haxelib.license,
+				tags: dataYml.haxelib.tags,
+				description: dataYml.haxelib.description,
+				classPath: dataYml.haxelib.classPath,
+				version: dataYml.haxelib.version,
+				releasenote: dataYml.haxelib.releasenote,
+				contributors: dataYml.haxelib.contributors
+			};
+			File.saveContent('haxelib.json', Json.stringify(coolHaxelib));
+		}
+		
 	}
 	function process(cmd:String, rest:Array<String>) {
 		var stinkyArgs = [cmd];
@@ -383,10 +468,10 @@ class SilkCli {
 		}
 		return [];
 	}
-	function scanForDepFromYml(ymlData:SilkYML, scanFor:String, path:Array<String>):Array<String> {
+	function scanForDepFromYml(ymlData:SilkyYaml, scanFor:String, path:Array<String>):Array<String> {
 		var rep = hecks.getRepository();
-		trace(ymlData.dependencies);
-		for (dep => version in ymlData.dependencies) {
+		var coolDep:DynamicAccess<String> = cast (merge(ymlData.dependencies, ymlData.devDependencies) : DynamicAccess<String>);
+		for (dep => version in coolDep.keyValueIterator()) {
 			version = parseVersion(version, dep);
 			trace(version);
 			trace(dep);
@@ -473,12 +558,17 @@ class SilkCli {
 		if (FileSystem.exists('haxelib.json')) {
 			var info = Data.readData(File.getContent('haxelib.json'), CheckData);
 			return cast (info.name: String);
-		} else {
-			var cwdArray = Sys.getCwd().split('/');
+		} else if (FileSystem.exists('.silk.yml')) {
+			var silkYml:SilkyYaml = parseSilkyJson(File.getContent('.silk.yml'));
+			if (silkYml.haxelib != null) {
+				return silkYml.haxelib.name;
+			}
+		} 
+		var cwdArray = Sys.getCwd().split('/');
 
-			return cwdArray[cwdArray.length - 1];
-		}
+		return cwdArray[cwdArray.length - 1];
 	}
+
 	function getArgsForhaxe():Array<String> {
 			var flagsAsArgs = [];
 			if (always) {
@@ -505,15 +595,9 @@ class SilkCli {
 				flagsAsArgs.push('--global');
 		return flagsAsArgs;
 	}
-	function parseSilkyJson(json:String):SilkYML {
-		trace(json);
-		var parsed:{dependencies:Dynamic} = Json.parse(json);
-		var map:Map<String, String> = [];
-		for (key in Reflect.fields(parsed.dependencies)) {
-			trace(" L )");
-			map.set(key, Reflect.field(parsed.dependencies, key));
-		}
-		return {dependencies: map};
+	function parseSilkyJson(json:String):SilkyYaml {
+		// oop
+		return Yaml.parse(json, parseOptions);
 	}
 	public function new() {
 		hecks = new HaxelibMain();
@@ -528,5 +612,11 @@ class SilkCli {
 			system: system,
 			skipDependencies: skipdeps,
 		};
+	}
+	function merge(base:Dynamic, ext:Dynamic) {
+		var res = Reflect.copy(base);
+		for (f in Reflect.fields(ext))
+			Reflect.setField(res, f, Reflect.field(res, f));
+		return res;
 	}
 }
