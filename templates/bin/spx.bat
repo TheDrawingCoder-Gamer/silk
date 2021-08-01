@@ -1,2 +1,2 @@
 @echo off
-haxelib run silk run %*
+haxelib --quiet run silk run %*

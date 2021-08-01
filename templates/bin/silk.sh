@@ -1,1 +1,1 @@
-haxelib run silk "$@"
+haxelib --quiet run silk "$@"

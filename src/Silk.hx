@@ -30,6 +30,7 @@ typedef HaxelibSilky = {
 	var version:String;
 	var releasenote:String;
 	var contributors:Array<String>;
+	var ?main:String;
 };
 
 typedef HaxeBuildSilky = {
@@ -80,6 +81,7 @@ class SiteProxy extends Proxy<haxelib.SiteApi> {}
 // I'm all for tink but i hate that i have to put optional on all of these goddamn switches
 class SilkCli {
 	static var parseOptions:ParserOptions = new ParserOptions().useObjects();
+	var cwd:String;
 	var hecks:HaxelibMain;
 	@:optional
   	@:alias('y')
@@ -114,7 +116,7 @@ class SilkCli {
 	}
 	@:command('install', 'i', 'add')
 	public function install(rest:Rest<String>) {
-		var args = cast (rest : Array<String>);
+		var args = getArgsFromRest(rest);
 		var gitRegex = ~/([A-Za-z0-9_\-.]+)@([a-zA-Z0-9-._~:\/?#\[\]@!$&'\(\)*+,;%=]+)/;
 		var versionRegex = ~/([A-Za-z0-9_\-.]+)@((?:[0-9]+)\.(?:[0-9]+)\.(?:[0-9]+)(?:-(?:[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?)/;
 		var githubRegex = ~/([A-Za-z0-9_\-.]+)@(?:github:)?([a-z0-9\-]+\/[a-z0-9\-]+)(?:#([a-z0-9]+))?/;
@@ -162,74 +164,74 @@ class SilkCli {
 	}
 	@:command('update')
 	public function update(rest:Rest<String>) {
-		process('update', cast rest);
+		process('update', getArgsFromRest(rest));
 	}
 	@:command('remove', 'rm', 'uninstall')
 	public function remove(rest:Rest<String>) {
-		process('remove', cast rest);
+		process('remove', getArgsFromRest(rest));
 	}
 	@:command('list', 'ls')
 	public function list(rest:Rest<String>) {
-		process('list', cast rest);
+		process('list', getArgsFromRest(rest));
 	}
 	@:command('set')
 	public function set(rest:Rest<String>) {
-		process('set', cast rest);
+		process('set', getArgsFromRest(rest));
 	}
 	@:command('search', 'find')
 	public function search(rest:Rest<String>) {
-		process('search', cast rest);
+		process('search', getArgsFromRest(rest));
 	}
 	@:command('info', 'about')
 	public function info(rest:Rest<String>) {
-		process('info', cast rest);
+		process('info', getArgsFromRest(rest));
 	}
 	@:command('config')
 	public function config(rest:Rest<String>) {
-		process('config', cast rest);
+		process('config', getArgsFromRest(rest));
 	}
 	@:command('path')
 	public function path(rest:Rest<String>) {
-		process('path', cast rest);
+		process('path', getArgsFromRest(rest));
 	}
 	@:command('libpath')
 	public function libpath(rest:Rest<String>) {
-		process('libpath', cast rest);
+		process('libpath', getArgsFromRest(rest));
 	}
 	@:command('version')
 	public function version(rest:Rest<String>) {
-		process('version', cast rest);
+		process('version', getArgsFromRest(rest));
 		Sys.println('Silk Version: 0.0.1');
 	}
 	@:command('submit')
 	public function submit(rest:Rest<String>) {
 		updateHaxelibJson();
-		process('submit', cast rest);
+		process('submit', getArgsFromRest(rest));
 	}
 	@:command('register')
 	public function register(rest:Rest<String>) {
-		process('register', cast rest);
+		process('register', getArgsFromRest(rest));
 	}
 	@:command('dev')
 	public function dev(rest:Rest<String>) {
 		updateHaxelibJson();
-		process('dev', cast rest);
+		process('dev', getArgsFromRest(rest));
 	}
 	@:command('setup')
 	public function setup(rest:Rest<String>) {
-		process('setup', cast rest);
+		process('setup', getArgsFromRest(rest));
 	}
 	@:command('newrepo')
 	public function newrepo(rest:Rest<String>) {
-		process('newrepo', cast rest);
+		process('newrepo', getArgsFromRest(rest));
 	}
 	@:command('deleterepo')
 	public function delrepo(rest:Rest<String>) {
-		process('deleterepo', cast rest);
+		process('deleterepo', getArgsFromRest(rest));
 	}
 	@:command('convertxml')
 	public function convertxml(rest:Rest<String>) {
-		process('convertxml', cast rest);
+		process('convertxml', getArgsFromRest(rest));
 	}
 	@:command('haxelib')
 	public function genHaxelib(rest:Rest<String>) {
@@ -306,12 +308,12 @@ class SilkCli {
 	}
 	@:command('haxe')
 	public function haxecmd(rest:Rest<String>) {
-		var sleep:Array<String> = cast rest;
+		var sleep:Array<String> = getArgsFromRest(cast rest);
 		if (!FileSystem.exists('.silk.yml')) {
 			Sys.command('haxe', [sleep[0] + '.hxml']);
 			return;
 		}
-		var ymlData = parseSilkyJson(File.getContent('.silk.yml'));
+		var ymlData = parseSilkyJson(File.getContent(Path.addTrailingSlash(cwd) + '.silk.yml'));
 		var coolDep:DynamicAccess<String> = cast(merge(ymlData.dependencies, ymlData.devDependencies) : DynamicAccess<String>);
 		trace(ymlData);
 		var lines:Array<String> = [];
@@ -344,7 +346,7 @@ class SilkCli {
 	@:command('why')
 	public function why(rest:Rest<String>) {
 		// idk why i need to declare type here... isn't that what the cast is supposed to do? 
-		var goodArgs:Array<String> = cast (rest : Array<String>);
+		var goodArgs:Array<String> = getArgsFromRest(cast rest);
 		if (goodArgs[0] == null) 
 			throw new Exception('Library must be specified');
 		var pathThing:Array<String> = [];
@@ -382,6 +384,10 @@ class SilkCli {
 		
 
 	}
+	function getArgsFromRest(rest:Array<String>):Array<String> {
+		Sys.setCwd(rest.pop());
+		return rest;
+	}
 	function updateHaxelibJson() {
 		if (FileSystem.exists('.silk.yml')) {
 			var dataYml = parseSilkyJson(File.getContent('.silk.yml'));
@@ -397,7 +403,8 @@ class SilkCli {
 				classPath: dataYml.haxelib.classPath,
 				version: dataYml.haxelib.version,
 				releasenote: dataYml.haxelib.releasenote,
-				contributors: dataYml.haxelib.contributors
+				contributors: dataYml.haxelib.contributors,
+				main: dataYml.haxelib.main
 			};
 			File.saveContent('haxelib.json', Json.stringify(coolHaxelib));
 		}
@@ -564,7 +571,7 @@ class SilkCli {
 				return silkYml.haxelib.name;
 			}
 		} 
-		var cwdArray = Sys.getCwd().split('/');
+		var cwdArray = cwd.split('/');
 
 		return cwdArray[cwdArray.length - 1];
 	}

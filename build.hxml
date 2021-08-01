@@ -1,8 +1,9 @@
 -cp src
--L tink_cli
--L yaml
 -L hxp
+-L yaml
+-L tink_cli
 -L haxelib
 -L hx3compat
+-D no-deprecation-warnings
 --main Silk
 --neko run.n

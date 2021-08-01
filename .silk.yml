@@ -19,12 +19,7 @@ haxelib:
   releasenote: initial release
   contributors: 
     - BulbyVR
-haxe: 
-  classPath: src
-  hxml: 
-    build: |
-      --main Silk
-      --neko run.n
+  main: src.Silk
   
 
 
