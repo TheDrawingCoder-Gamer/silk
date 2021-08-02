@@ -81,6 +81,198 @@ class SiteProxy extends Proxy<haxelib.SiteApi> {}
 // I'm all for tink but i hate that i have to put optional on all of these goddamn switches
 class SilkCli {
 	static var parseOptions:ParserOptions = new ParserOptions().useObjects();
+	static var commands:Help = [
+		{
+			name: "Basic",
+			commands: [
+				{
+					command: "install",
+					aliases: ["i", "add"],
+					about: "install a given library, or all libraries from a hxml/silk.yml file"
+				},
+				{
+					command: "update",
+					aliases: ['upgrade'],
+					about: "update a single library (if given) or all installed libraries"
+				},
+				{
+					command: "remove",
+					aliases: ["rm", "uninstall"],
+					about: "remove a given library or version"
+				},
+				{
+					command: "list",
+					aliases: ["ls"],
+					about: "list all installed libraries"
+				}, 
+				{
+					command: "set",
+					aliases: [],
+					about: "set the current version for a library"
+				}
+			]
+		},
+		{
+			name: "Information",
+			commands: [
+				{
+					command: "search",
+					aliases: ["find"],
+					about: "list libraries matching a word"
+				}, 
+				{
+					command: "info",
+					aliases: ["about"],
+					about: "list information on a given library"
+				},
+				{
+					command: "user",
+					aliases: [],
+					about: "list information on a given user"
+				},
+				{
+					command: "config",
+					aliases: [],
+					about: "print the repository path"
+				},
+				{
+					command: "path",
+					aliases: [],
+					about: "give paths to libraries' sources and necessary build definitions"
+				}, 
+				{
+					command: "libpath",
+					aliases: [],
+					about: "returns the root path of a library"
+				}, 
+				{
+					command: "version",
+					aliases: [],
+					about: "print the currently used silk version"
+				},
+				{
+					command: "help",
+					aliases: [],
+					about: "display this list of options"
+				}
+			]
+		},
+		{
+			name: "Development",
+			commands: [
+				{
+					command: "submit",
+					aliases: [],
+					about: "submit or update a library package"
+				},
+				{
+					command: "register",
+					aliases: [],
+					about: "register a new user"
+				},
+				{
+					command: "dev",
+					aliases: [],
+					about: "set the development directory for a given library"
+				},
+				{
+					command: "haxe",
+					aliases: [],
+					about: "build project using .silk.yml, with argument being build selected"
+				},
+				{
+					command: "makehxmls",
+					aliases: [],
+					about: "generate all hxmls from .silk.yml"
+				}
+			]
+		},
+		{
+			name: "Miscellaneous",
+			commands: [
+				{
+					command: "setup",
+					aliases: [],
+					about: "set up silk and add it to path"
+				}, 
+				{
+					command: "newrepo",
+					aliases: [],
+					about: "create a new local repository"
+				},
+				{
+					command: "deleterepo",
+					aliases: [],
+					about: "delete the local repository"
+				},
+				{
+					command: "convertxml",
+					aliases: [],
+					about: "convert haxelib.xml to haxelib.json"
+				},
+				{
+					command: "run",
+					aliases: ["spx, without silk before it"],
+					about: "run the specified library with parameters"
+				},
+				{
+					command: "proxy",
+					aliases: [],
+					about: "setup the Http proxy"
+				},
+				{
+					command: "why",
+					aliases: [],
+					about: "find out why a library is required"
+				}
+			]
+		},
+		{
+			name: "Avaliable switches",
+			commands: [
+				{
+					command: "--flat",
+					aliases: [],
+					about: "do not use --recursive cloning for git"
+				},
+				{
+					command: "--always",
+					aliases: ['-y'],
+					about: "answer all questions with yes"
+				},
+				{
+					command: "--debug",
+					aliases: [],
+					about: "run in debug mode, imply not --quiet"
+				},
+				{
+					command: "--quiet",
+					aliases: [],
+					about: "print less messages, imply not --debug"
+				},
+				{
+					command: "--system",
+					aliases: [],
+					about: "run bundled haxelib version instead of latest update"
+				},
+				{
+					command: "--skip-dependencies",
+					aliases: ["--no-dep"],
+					about: "do not install dependencies"
+				},
+				{
+					command: "--never",
+					aliases: ["-n"],
+					about: "answer all questions with no"
+				},
+				{
+					command: "--global",
+					aliases: ["-g"],
+					about: "force global repo if a local one exists"
+				}
+			]
+		}
+	];
 	var cwd:String;
 	var hecks:HaxelibMain;
 	@:optional
@@ -112,7 +304,7 @@ class SilkCli {
 	public var silky:Bool;
 	@:defaultCommand
 	public function help(rest:Rest<String>) {
-		hecks.usage();
+		Sys.print(commands.toString());
 	}
 	@:command('install', 'i', 'add')
 	public function install(rest:Rest<String>) {
@@ -162,7 +354,7 @@ class SilkCli {
 		hecks.process();
 		
 	}
-	@:command('update')
+	@:command('update', 'upgrade')
 	public function update(rest:Rest<String>) {
 		process('update', getArgsFromRest(rest));
 	}
@@ -217,10 +409,6 @@ class SilkCli {
 		updateHaxelibJson();
 		process('dev', getArgsFromRest(rest));
 	}
-	@:command('setup')
-	public function setup(rest:Rest<String>) {
-		process('setup', getArgsFromRest(rest));
-	}
 	@:command('newrepo')
 	public function newrepo(rest:Rest<String>) {
 		process('newrepo', getArgsFromRest(rest));
@@ -238,7 +426,7 @@ class SilkCli {
 		updateHaxelibJson();
 		Sys.println('Updated haxelib.json.');
 	}
-	@:command('silksetup')
+	@:command('setup')
 	public function silksetup(rest:Rest<String>) {
 		var haxePath:Null<String> = Sys.getEnv('HAXEPATH');
 		// :neutral_face:
@@ -626,4 +814,31 @@ class SilkCli {
 			Reflect.setField(res, f, Reflect.field(res, f));
 		return res;
 	}
+}
+typedef Category = {
+	var name:String;
+	var commands:Array<HelpCommand>;
+}
+typedef HelpCommand = {
+	var command:String;
+	var aliases:Array<String>;
+	var about:String;
+}
+abstract Help(Array<Category>)  from Array<Category> {
+	@:to 
+	public function toString():String {
+		var result:String = "Usage: silk [command] [options]\n";
+		for (cat in this) {
+			result += cat.name + '\n';
+			for (cmd in cat.commands) {
+				result += '  ${cmd.command}';
+				if (cmd.aliases.length != 0) {
+					result += ' (${cmd.aliases.length == 1 ? 'alias' : 'aliases'}: ${cmd.aliases.join(',')})';
+				}
+				result += ': ${cmd.about}\n';
+			}
+		}
+		return result;
+	}
+	
 }
