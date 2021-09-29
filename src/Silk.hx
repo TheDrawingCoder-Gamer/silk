@@ -17,6 +17,7 @@ import tink.Cli;
 import tink.cli.Rest;
 import hxp.*;
 import haxe.DynamicAccess;
+import pseudohaxelib.PSHaxelib;
 using StringTools;
 using ArrayTools;
 
@@ -61,7 +62,9 @@ class Silk {
 				system: false,
 				skipDependencies: false,
 			};
+			
 			hecks.process();
+			
 		} else 
     		Cli.process(Sys.args(), new SilkCli()).handle(Cli.exit);
     }
@@ -429,6 +432,7 @@ class SilkCli {
 	@:command('setup')
 	public function silksetup(rest:Rest<String>) {
 		var haxePath:Null<String> = Sys.getEnv('HAXEPATH');
+
 		// :neutral_face:
 		if (System.hostPlatform == WINDOWS) {
 			if (haxePath == null || haxePath == "") {
@@ -609,7 +613,7 @@ class SilkCli {
 		hecks.process();
 	}
 	function scanForDep(hxml:String, lib:String) {
-		var rep = hecks.getRepository();
+		var rep = PSHaxelib.getRepository(cwd, global);
 		for (l in hxml.split('\n')) {
 			var funnyRegex = ~/(?:-L|--library) ([A-Za-z0-9_\-.]+)(?::(git|(?:(?:[0-9]+)\.(?:[0-9]+)\.(?:[0-9]+)(?:-(?:[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+)?)))?/;
 			if (funnyRegex.match(l)) {
@@ -640,7 +644,7 @@ class SilkCli {
 		return [];
 	}
 	function scanForDepFromLib(libData:Infos, scanFor:String, path:Array<String>, ?direct:Bool = false):Array<String> {
-		var rep = hecks.getRepository();
+		var rep = PSHaxelib.getRepository(cwd, global);
 		for (dep in libData.dependencies) {
 			// trace(dep);
 			var nuPath = path.copy();
@@ -664,7 +668,7 @@ class SilkCli {
 		return [];
 	}
 	function scanForDepFromYml(ymlData:SilkyYaml, scanFor:String, path:Array<String>):Array<String> {
-		var rep = hecks.getRepository();
+		var rep = PSHaxelib.getRepository(cwd, global);
 		var coolDep:DynamicAccess<String> = cast (merge(ymlData.dependencies, ymlData.devDependencies) : DynamicAccess<String>);
 		for (dep => version in coolDep.keyValueIterator()) {
 			version = parseVersion(version, dep);
@@ -695,7 +699,7 @@ class SilkCli {
 		var gitRegex = ~/((?:git:)[a-zA-Z0-9-._~:\/?#\[\]@!$&'\(\)*+,;%=]+)/;
 		var githubRegex = ~/(?:github:)([a-z0-9\-]+\/[a-z0-9\-]+)(?:#([a-z0-9]+))?/;
 		var mercuryRegex = ~/(?:mercury|hg):([a-zA-Z0-9-._~:\/?#\[\]@!$&'\(\)*+,;%=]+)/;
-		var rep = hecks.getRepository();
+		var rep = PSHaxelib.getRepository(cwd, global);
 		try {
 			var pdir = rep + '/' + Data.safe(lib) + '/' + Data.safe(version);
 			// we don't need to check for dev as explicit version should always exist

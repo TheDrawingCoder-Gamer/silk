@@ -2,13 +2,11 @@
   "name": "silk",
   "license": "GPL",
   "tags": ["haxelib", "core"],
-  "classPath": "src",
   "description": "A neat little wrapper around haxelib.",
   "contributors": ["BulbyVR"],
   "releasenote": "initial release",
   "version": "0.0.1",
   "url": "https://lib.haxe.org/documentation/",
-  "main": "Silk",
   "dependencies": {
     "tink_cli": "0.5.1",
     "yaml": "2.0.1",
